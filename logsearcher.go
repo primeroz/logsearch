@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -18,6 +19,8 @@ const colorReset = "\033[0m"
 type LogSearcher struct {
 	Client     *EsClient
 	Query      string
+	Tail       bool
+	Show       bool
 	Period     time.Duration
 	NumResults int
 	Follow     bool
@@ -35,6 +38,7 @@ func (ls *LogSearcher) Start() {
 			StartTime:  ls.startTime,
 			EndTime:    time.Now(),
 			NumResults: ls.NumResults,
+			Show:       ls.Show,
 		}
 
 		resp, err := ls.Client.Search(queryOptions)
@@ -74,13 +78,47 @@ func (ls *LogSearcher) printResults(resp *EsResponse) {
 		jsonMsg := string(jsonMsgBytes)
 
 		if tty {
-			jsonMsg = strings.Replace(jsonMsg, beginHighlight, colorHighlight, -1)
-			jsonMsg = strings.Replace(jsonMsg, endHighlight, colorReset, -1)
+			if !ls.Tail {
+				jsonMsg = strings.Replace(jsonMsg, beginHighlight, colorHighlight, -1)
+				jsonMsg = strings.Replace(jsonMsg, endHighlight, colorReset, -1)
 
-			fmt.Printf("\033[34m\033[1m%s\033[0m -- ", hit.Source["@timestamp"])
-			fmt.Printf("%s\n\n", jsonMsg)
+				fmt.Printf("\033[34m\033[1m%s\033[0m -- ", hit.Source["@timestamp"])
+				fmt.Printf("%s\n\n", jsonMsg)
+			} else {
+				var m interface{}
+				err = json.Unmarshal(jsonMsgBytes, &m)
+
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				timestampStr := hit.Source["@timestamp"].(string)
+				messageStr := hit.Source["message"].(string)
+
+				var hostStr string
+				if hit.Source["host"] != nil {
+					hostStr = hit.Source["host"].(string)
+				} else if hit.Source["received_from"] != nil {
+					hostStr = hit.Source["received_from"].(string)
+				} else {
+					hostStr = "No Host Defined"
+				}
+
+				messageStr = strings.Replace(messageStr, beginHighlight, colorHighlight, -1)
+				messageStr = strings.Replace(messageStr, endHighlight, colorReset, -1)
+				timestampStr = strings.Replace(timestampStr, beginHighlight, colorHighlight, -1)
+				timestampStr = strings.Replace(timestampStr, endHighlight, colorReset, -1)
+				hostStr = strings.Replace(hostStr, beginHighlight, colorHighlight, -1)
+				hostStr = strings.Replace(hostStr, endHighlight, colorReset, -1)
+
+				fmt.Printf("\033[34m\033[1m%s\033[0m - \033[34m\033[1m%s\033[0m -- %s\n", timestampStr, hostStr, messageStr)
+			}
 		} else {
-			fmt.Printf("%s -- %s\n", hit.Source["@timestamp"], jsonMsg)
+			if !ls.Tail {
+				fmt.Printf("%s -- %s\n", hit.Source["@timestamp"], jsonMsg)
+			} else {
+				fmt.Printf("%s - %s -- %s\n", hit.Source["@timestamp"], hit.Source["host"], hit.Source["message"])
+			}
 		}
 	}
 }

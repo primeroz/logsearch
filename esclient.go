@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -38,6 +39,7 @@ type EsQueryOptions struct {
 	NumResults int
 	StartTime  time.Time
 	EndTime    time.Time
+	Show       bool
 }
 
 func (c *EsClient) Search(queryOpts EsQueryOptions) (*EsResponse, error) {
@@ -46,6 +48,11 @@ func (c *EsClient) Search(queryOpts EsQueryOptions) (*EsResponse, error) {
 	jsonQuery, err := json.Marshal(buildQuery(queryOpts))
 	if err != nil {
 		return nil, err
+	}
+
+	if queryOpts.Show {
+		fmt.Printf("ES Query: %+v\n", buildQuery(queryOpts))
+		fmt.Printf("--------------------------\n\n")
 	}
 
 	req, err := http.NewRequest("POST", searchUrl, bytes.NewBuffer(jsonQuery))

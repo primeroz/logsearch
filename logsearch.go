@@ -15,6 +15,8 @@ var opts struct {
 	NumResults       int    `short:"n" long:"num-results" description:"Max number of results to return" default:"100"`
 	Period           string `short:"p" long:"period" description:"Search time period, e.g. '3 hours', or '1 day'" default:"1 day"`
 	Version          bool   `short:"V" long:"version" description:"Show logsearch version"`
+	Tail             bool   `short:"t" long:"tail" description:"output similar to TAIL. TIMESTAMP - HOST - MESSAGE"`
+	Show             bool   `short:"s" long:"show" description:"DEBUG : Show Queries to Elasticsearch"`
 }
 
 func main() {
@@ -58,6 +60,8 @@ func main() {
 		Period:     searchPeriod,
 		NumResults: opts.NumResults,
 		Follow:     opts.Follow,
+		Tail:       opts.Tail,
+		Show:       opts.Show,
 	}
 	searcher.Start()
 }
